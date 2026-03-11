@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 today = datetime.today()
@@ -28,13 +28,33 @@ days_ru = [
 weekday_today = today.weekday()
 
 buses = []
+seen = set()
 
 
-# HAVAS
+def add_bus(date, day, time, company):
+
+    key = (date, time, company)
+
+    if key in seen:
+        return
+
+    seen.add(key)
+
+    buses.append({
+        "date": date,
+        "day": day,
+        "time": time,
+        "company": company
+    })
+
+
+# ---------- HAVAS ----------
 
 url = "https://www.e-yasamrehberi.com/havas/havas_dalaman_havalimani.htm"
 
-soup = BeautifulSoup(requests.get(url).text,"html.parser")
+html = requests.get(url, timeout=30).text
+
+soup = BeautifulSoup(html, "html.parser")
 
 for tr in soup.select("table tr"):
 
@@ -53,8 +73,7 @@ for tr in soup.select("table tr"):
     if day_index < weekday_today:
         continue
 
-    date = today
-    date = date.replace(day=today.day + (day_index - weekday_today))
+    date = today + timedelta(days=(day_index - weekday_today))
 
     times = cols[1].get_text().split(",")
 
@@ -62,46 +81,50 @@ for tr in soup.select("table tr"):
 
         t = t.strip()
 
-        if ":" in t:
+        if ":" not in t:
+            continue
 
-            buses.append({
-            "date": date.strftime("%d.%m.%Y"),
-            "day": days_ru[day_index],
-            "time": t,
-            "company": "Havas"
-            })
+        add_bus(
+            date.strftime("%d.%m.%Y"),
+            days_ru[day_index],
+            t,
+            "Havaş"
+        )
 
 
-# MUTTAS
+# ---------- MUTTAS ----------
 
 url = "https://ulasim.muttas.com.tr/hat/48-25-fethiye-otogar-dalaman-havalimani-439"
 
-soup = BeautifulSoup(requests.get(url).text,"html.parser")
+html = requests.get(url, timeout=30).text
 
-for block in soup.select("table"):
+soup = BeautifulSoup(html, "html.parser")
 
-    for tr in block.select("tr"):
+for td in soup.find_all("td"):
 
-        td = tr.find("td")
+    text = td.get_text(" ", strip=True)
 
-        if not td:
-            continue
+    text = text.replace("Image", "").strip()
 
-        t = td.get_text(" ",strip=True).replace("Image","").strip()
+    if ":" not in text:
+        continue
 
-        if ":" in t:
+    if len(text) > 5:
+        continue
 
-            buses.append({
-            "date": today.strftime("%d.%m.%Y"),
-            "day": days_ru[weekday_today],
-            "time": t,
-            "company": "Muttas"
-            })
-
-
-buses.sort(key=lambda x:(x["date"],x["time"]))
+    add_bus(
+        today.strftime("%d.%m.%Y"),
+        days_ru[weekday_today],
+        text,
+        "MUTTAŞ"
+    )
 
 
-with open("schedule.json","w",encoding="utf8") as f:
+# ---------- сортировка ----------
 
-    json.dump(buses,f,ensure_ascii=False,indent=2)
+buses.sort(key=lambda x: (x["date"], x["time"]))
+
+
+with open("schedule.json", "w", encoding="utf8") as f:
+
+    json.dump(buses, f, ensure_ascii=False, indent=2)
