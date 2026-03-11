@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Фетхие — аэропорт Даламан</title>
+
+<style>
+
+body{
+font-family:Arial, sans-serif;
+background:#f5f5f5;
+text-align:center;
+padding:20px;
+margin:0;
+}
+
+.container{
+max-width:700px;
+margin:auto;
+background:white;
+padding:25px;
+border-radius:6px;
+box-shadow:0 0 6px rgba(0,0,0,0.1);
+}
+
+button{
+padding:10px 20px;
+font-size:16px;
+margin:10px;
+cursor:pointer;
+}
+
+table{
+border-collapse:collapse;
+margin:auto;
+margin-top:15px;
+}
+
+th,td{
+border:1px solid #ccc;
+padding:8px 12px;
+}
+
+th{
+background:#eee;
+}
+
+.info{
+margin-top:10px;
+font-size:14px;
+color:#444;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Фетхие → аэропорт Даламан</h2>
+
+<p>Время в пути — около 1 часа. Цена билета — 260 лир.</p>
+
+<button onclick="load()">Показать расписание</button>
+
+<div class="info">
+Рейсы в обратном направлении не имеют точного расписания и отправляются в зависимости от прибытия местных авиарейсов.
+</div>
+
+<div id="table"></div>
+
+<br>
+
+<a href="https://t.me/fethiye_oludeniz" target="_blank">
+<button>Фетхие Олюдениз Чат</button>
+</a>
+
+</div>
+
+<script>
+
+function timeToMinutes(t){
+let p=t.split(":")
+return parseInt(p[0])*60 + parseInt(p[1])
+}
+
+async function load(){
+
+let data=await fetch("schedule.json").then(r=>r.json())
+
+let html="<table>"
+html+="<tr><th>Дата</th><th>День</th><th>Время</th><th>Перевозчик</th></tr>"
+
+data.forEach(b=>{
+
+html+="<tr>"
+html+="<td>"+b.date+"</td>"
+html+="<td>"+b.day+"</td>"
+html+="<td>"+b.time+"</td>"
+html+="<td>"+b.company+"</td>"
+html+="</tr>"
+
+})
+
+html+="</table>"
+
+document.getElementById("table").innerHTML=html
+
+}
+
+</script>
+
+</body>
+</html>
