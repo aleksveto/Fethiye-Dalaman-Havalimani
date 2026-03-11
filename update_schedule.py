@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import json
+import re
 
 today = datetime.today()
 
@@ -56,14 +57,14 @@ html = requests.get(url, timeout=30).text
 
 soup = BeautifulSoup(html, "html.parser")
 
-for tr in soup.select("table tr"):
+for tr in soup.find_all("tr"):
 
-    cols = tr.find_all("td")
+    tds = tr.find_all("td")
 
-    if len(cols) < 2:
+    if len(tds) < 2:
         continue
 
-    day_tr = cols[0].get_text(strip=True)
+    day_tr = tds[0].get_text(strip=True)
 
     if day_tr not in days_tr:
         continue
@@ -75,14 +76,11 @@ for tr in soup.select("table tr"):
 
     date = today + timedelta(days=(day_index - weekday_today))
 
-    times = cols[1].get_text().split(",")
+    text = tds[1].get_text()
+
+    times = re.findall(r"\d{2}:\d{2}", text)
 
     for t in times:
-
-        t = t.strip()
-
-        if ":" not in t:
-            continue
 
         add_bus(
             date.strftime("%d.%m.%Y"),
@@ -100,22 +98,14 @@ html = requests.get(url, timeout=30).text
 
 soup = BeautifulSoup(html, "html.parser")
 
-for td in soup.find_all("td"):
+times = re.findall(r"\d{2}:\d{2}", soup.get_text())
 
-    text = td.get_text(" ", strip=True)
-
-    text = text.replace("Image", "").strip()
-
-    if ":" not in text:
-        continue
-
-    if len(text) > 5:
-        continue
+for t in times:
 
     add_bus(
         today.strftime("%d.%m.%Y"),
         days_ru[weekday_today],
-        text,
+        t,
         "MUTTAŞ"
     )
 
