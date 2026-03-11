@@ -1,4 +1,5 @@
 import requests
+from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import json
 import re
@@ -17,9 +18,9 @@ days_ru = [
 buses = []
 seen = set()
 
-def add_bus(date, day, time, company):
+def add_bus(date,day,time,company):
 
-    key = (date,time,company)
+    key=(date,time,company)
 
     if key in seen:
         return
@@ -27,52 +28,60 @@ def add_bus(date, day, time, company):
     seen.add(key)
 
     buses.append({
-        "date": date,
-        "day": day,
-        "time": time,
-        "company": company
+        "date":date,
+        "day":day,
+        "time":time,
+        "company":company
     })
 
 
-# ---------- HAVAS ----------
+# -------- HAVAS --------
 
-url = "https://www.e-yasamrehberi.com/havas/havas_dalaman_havalimani.htm"
+url="https://www.e-yasamrehberi.com/havas/havas_dalaman_havalimani.htm"
 
-html = requests.get(url,timeout=30).text
+html=requests.get(url,timeout=30).text
+soup=BeautifulSoup(html,"html.parser")
 
-for i,day in enumerate(days_tr):
+rows=soup.find_all("tr")
 
-    pattern = day + r".*?((\d{2}:\d{2}.*?)+)"
+for row in rows:
 
-    match = re.search(pattern,html,re.S)
+    cols=[c.get_text(strip=True) for c in row.find_all("td")]
 
-    if not match:
+    if len(cols)<2:
         continue
 
-    if i < weekday_today:
+    day_tr=cols[0]
+
+    if day_tr not in days_tr:
         continue
 
-    date = today + timedelta(days=i-weekday_today)
+    day_index=days_tr.index(day_tr)
 
-    times = re.findall(r"\d{2}:\d{2}",match.group())
+    if day_index<weekday_today:
+        continue
+
+    date=today+timedelta(days=(day_index-weekday_today))
+
+    times=re.findall(r"\d{2}:\d{2}",cols[1])
 
     for t in times:
 
         add_bus(
             date.strftime("%d.%m.%Y"),
-            days_ru[i],
+            days_ru[day_index],
             t,
             "Havaş"
         )
 
 
-# ---------- MUTTAS ----------
+# -------- MUTTAS --------
 
-url = "https://ulasim.muttas.com.tr/hat/48-25-fethiye-otogar-dalaman-havalimani-439"
+url="https://ulasim.muttas.com.tr/hat/48-25-fethiye-otogar-dalaman-havalimani-439"
 
-html = requests.get(url,timeout=30).text
+html=requests.get(url,timeout=30).text
 
-times = re.findall(r"\d{2}:\d{2}",html)
+times=re.findall(r"\d{2}:\d{2}",html)
 
 for t in times:
 
@@ -84,7 +93,7 @@ for t in times:
     )
 
 
-# ---------- сортировка ----------
+# -------- сортировка --------
 
 buses.sort(key=lambda x:(x["date"],x["time"]))
 
