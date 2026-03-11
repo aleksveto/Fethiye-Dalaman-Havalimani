@@ -1,40 +1,25 @@
 import requests
-from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import json
 import re
 
 today = datetime.today()
+weekday_today = today.weekday()
 
 days_tr = [
-"Pazartesi",
-"Salı",
-"Çarşamba",
-"Perşembe",
-"Cuma",
-"Cumartesi",
-"Pazar"
+"Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"
 ]
 
 days_ru = [
-"Понедельник",
-"Вторник",
-"Среда",
-"Четверг",
-"Пятница",
-"Суббота",
-"Воскресенье"
+"Понедельник","Вторник","Среда","Четверг","Пятница","Суббота","Воскресенье"
 ]
-
-weekday_today = today.weekday()
 
 buses = []
 seen = set()
 
-
 def add_bus(date, day, time, company):
 
-    key = (date, time, company)
+    key = (date,time,company)
 
     if key in seen:
         return
@@ -53,38 +38,29 @@ def add_bus(date, day, time, company):
 
 url = "https://www.e-yasamrehberi.com/havas/havas_dalaman_havalimani.htm"
 
-html = requests.get(url, timeout=30).text
+html = requests.get(url,timeout=30).text
 
-soup = BeautifulSoup(html, "html.parser")
+for i,day in enumerate(days_tr):
 
-for tr in soup.find_all("tr"):
+    pattern = day + r".*?((\d{2}:\d{2}.*?)+)"
 
-    tds = tr.find_all("td")
+    match = re.search(pattern,html,re.S)
 
-    if len(tds) < 2:
+    if not match:
         continue
 
-    day_tr = tds[0].get_text(strip=True)
-
-    if day_tr not in days_tr:
+    if i < weekday_today:
         continue
 
-    day_index = days_tr.index(day_tr)
+    date = today + timedelta(days=i-weekday_today)
 
-    if day_index < weekday_today:
-        continue
-
-    date = today + timedelta(days=(day_index - weekday_today))
-
-    text = tds[1].get_text()
-
-    times = re.findall(r"\d{2}:\d{2}", text)
+    times = re.findall(r"\d{2}:\d{2}",match.group())
 
     for t in times:
 
         add_bus(
             date.strftime("%d.%m.%Y"),
-            days_ru[day_index],
+            days_ru[i],
             t,
             "Havaş"
         )
@@ -94,11 +70,9 @@ for tr in soup.find_all("tr"):
 
 url = "https://ulasim.muttas.com.tr/hat/48-25-fethiye-otogar-dalaman-havalimani-439"
 
-html = requests.get(url, timeout=30).text
+html = requests.get(url,timeout=30).text
 
-soup = BeautifulSoup(html, "html.parser")
-
-times = re.findall(r"\d{2}:\d{2}", soup.get_text())
+times = re.findall(r"\d{2}:\d{2}",html)
 
 for t in times:
 
@@ -112,9 +86,9 @@ for t in times:
 
 # ---------- сортировка ----------
 
-buses.sort(key=lambda x: (x["date"], x["time"]))
+buses.sort(key=lambda x:(x["date"],x["time"]))
 
 
-with open("schedule.json", "w", encoding="utf8") as f:
+with open("schedule.json","w",encoding="utf8") as f:
 
-    json.dump(buses, f, ensure_ascii=False, indent=2)
+    json.dump(buses,f,ensure_ascii=False,indent=2)
